@@ -58,17 +58,17 @@ private:
         }
     }
 
-    void parseStmt() {
+    Node parseStmt() {
         if (currentToken().type == "IF") {
-            parseIfStmt();
+            return parseIfStmt();
         } else if (currentToken().type == "REPEAT") {
-            parseRepeatStmt();
+            return parseRepeatStmt();
         } else if (currentToken().type == "IDENTIFIER") {
-            parseAssignStmt();
+            return parseAssignStmt();
         } else if (currentToken().type == "READ") {
-            parseReadStmt();
+            return parseReadStmt();
         } else if (currentToken().type == "WRITE") {
-            parseWriteStmt();
+            return parseWriteStmt();
         } else {
             //the error is from here
             throw runtime_error("Syntax Error: Unexpected token " + currentToken().type);
@@ -76,15 +76,19 @@ private:
     }
 
     Node parseIfStmt() {
-        Node if_node;
-        if_node.name = "if";
-        if_node.isSquare = true;
-        if_node.id = currentIndex;
+        Node if_node("if", currentIndex, true);
         eat("IF");
         Node left_child = parseExp();
         eat("THEN");
-        parseStmt();
-        while (currentToken().type != "END" && currentToken().type != "ELSE") parseStmt();
+        graph[if_node].emplace_back(left_child, 1);
+        Node right_child = parseStmt();
+        graph[if_node].emplace_back(right_child, 1);
+        Node prv(right_child);
+        while (currentToken().type != "END" && currentToken().type != "ELSE") {
+            Node cur = parseStmt();
+            graph[prv].emplace_back(cur, 0);
+            prv = cur;
+        }
 
         // Check for optional "ELSE" block
         if (currentToken().type == "ELSE") {
@@ -98,11 +102,20 @@ private:
     }
 
     Node parseRepeatStmt() {
+        Node repeat("Repeat", currentIndex, true);
         eat("REPEAT");
-        parseStmt();
-        while (currentToken().type != "UNTIL") parseStmt();
+        Node left_child = parseStmt();
+        graph[repeat].emplace_back(left_child, 1);
+        Node prv(left_child);
+        while (currentToken().type != "UNTIL") {
+            Node cur = parseStmt();
+            graph[prv].emplace_back(cur, 0);
+            prv = cur;
+        }
         eat("UNTIL");
-        parseExp();
+        Node right_child = parseExp();
+        graph[repeat].emplace_back(right_child, 1);
+        return repeat;
     }
 
     Node parseAssignStmt() {
@@ -128,7 +141,7 @@ private:
         if (currentToken().type == "LESSTHAN" || currentToken().type == "EQUAL") {
             Node parent_node("op" + '\n' + '(' + currentToken().value + ')', currentIndex, false);
             eat(currentToken().type);
-            Node right_node = parseSimpleExp();
+            Node right_node = parseExp();
             graph[parent_node].emplace_back(left_node, 1);
             graph[parent_node].emplace_back(right_node, 1);
             return parent_node;
@@ -142,7 +155,7 @@ private:
         if (currentToken().type == "PLUS" || currentToken().type == "MINUS") {
             Node parent_node("op" + '\n' + '(' + currentToken().value + ')', currentIndex, false);
             eat(currentToken().type);
-            Node right_node = parseTerm();
+            Node right_node = parseExp();
             graph[parent_node].emplace_back(left_node, 1);
             graph[parent_node].emplace_back(right_node, 1);
             return parent_node;
