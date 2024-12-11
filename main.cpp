@@ -92,9 +92,16 @@ private:
 
         // Check for optional "ELSE" block
         if (currentToken().type == "ELSE") {
+            Node else_node("else", currentIndex, true);
             eat("ELSE");
-            parseStmt();
-            while (currentToken().type != "END") parseStmt();
+            Node left_else_node = parseStmt();
+            graph[else_node].emplace_back(left_else_node, 1);
+            Node prv_else(left_else_node);
+            while (currentToken().type != "END") {
+                Node cur = parseStmt();
+                graph[prv_else].emplace_back(cur, 0);
+                prv_else = cur;
+            }
         }
 
         eat("END");
@@ -127,13 +134,19 @@ private:
 
     Node parseReadStmt() {
         eat("READ");
+        Node read("read" + '\n' + '(' + currentToken().value + ')', currentIndex, true);
         eat("IDENTIFIER");
-        eat("SEMICOLON");
+        if (currentToken().type == "SEMICOLON") eat("SEMICOLON");
+        return read;
     }
 
     Node parseWriteStmt() {
+        Node write("write", currentIndex, true);
         eat("WRITE");
+        Node child("id" + '\n' + '(' + currentToken().value + ')', currentIndex, false);
         eat("IDENTIFIER");
+        graph[write].emplace_back(child, 1);
+        return write;
     }
 
     Node parseExp() {
