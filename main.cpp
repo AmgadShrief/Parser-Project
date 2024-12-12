@@ -23,6 +23,11 @@ struct Node {
     int id;
     bool isSquare;
     Node(const string& v, const int& t, const bool& b) : name(v), id(t), isSquare(b) {}
+
+    // Define a less-than operator for Node
+    bool operator<(const Node& other) const {
+        if (id != other.id) return id < other.id;
+    }
 };
 
 //Node -> {child_node, 1}, {sibling_node, 0}
