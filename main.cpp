@@ -23,7 +23,7 @@ struct Node {
     string value;
     int id;
     bool isSquare;
-    Node(const string& v, const string &m, const int& t, const bool& b) : name(v), value(m), id(t), isSquare(b) {}
+    Node(const string& v, const string &m, const size_t& t, const bool& b) : name(v), value(m), id(t), isSquare(b) {}
 
     // Define a less-than operator for Node
     bool operator<(const Node& other) const {
@@ -37,7 +37,9 @@ map<Node, vector<pair<Node, bool>>> graph;
 class Parser {
 private:
     vector<Token> tokens;
-    size_t currentIndex;
+    size_t currentIndex = 0;
+    Node root;
+
 
     // Get the current token
     Token currentToken() {
@@ -58,9 +60,12 @@ private:
 
     // Grammar rules
     void parseStmtSeq() {
-        parseStmt();
+        Node prv = parseStmt();
+        if (currentIndex == 0) root = prv;
         while (currentIndex < tokens.size()) {
-            parseStmt();
+            Node cur = parseStmt();
+            graph[prv].emplace_back(cur ,0);
+            prv = cur;
         }
     }
 
@@ -223,7 +228,12 @@ private:
     }
 
 public:
-    Parser(const vector<Token>& t) : tokens(t), currentIndex(0) {}
+    Parser(const vector<Token>& t) : tokens(t), currentIndex(0), root("", "", -1, false) {
+    }
+
+    Node getRoot() {
+        return root;
+    }
 
     void parse() {
         parseStmtSeq();
