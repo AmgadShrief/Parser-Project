@@ -22,12 +22,15 @@ struct Node {
     string name;
     string value;
     int id;
-    bool isSquare;
-    Node(const string& v, const string &m, const size_t& t, const bool& b) : name(v), value(m), id(t), isSquare(b) {}
+    bool type;
+    Node(const string& v, const string &m, const size_t& t, const bool& b) : name(v), value(m), id(t), type(b) {}
 
     // Define a less-than operator for Node
     bool operator<(const Node& other) const {
-        if (id != other.id) return id < other.id;
+        if (id != other.id) {
+            return id < other.id;
+        }
+        return name < other.name;
     }
 };
 
@@ -53,7 +56,8 @@ private:
     void eat(const string& expectedType) {
         if (currentToken().type == expectedType) {
             currentIndex++;
-        } else {
+        }
+        else {
             throw runtime_error("Syntax Error: Expected " + expectedType + ", found " + currentToken().type);
         }
     }
@@ -61,11 +65,9 @@ private:
     // Grammar rules
     void parseStmtSeq() {
         Node prv = parseStmt();
-        if (currentIndex == 0) root = prv;
         while (currentIndex < tokens.size()) {
             Node cur = parseStmt();
-            graph[prv].emplace_back(cur ,0);
-            prv = cur;
+            graph[prv].emplace_back(cur, 0);
         }
     }
 
@@ -113,6 +115,7 @@ private:
                 graph[prv_else].emplace_back(cur, 0);
                 prv_else = cur;
             }
+            graph[if_node].emplace_back(else_node, 1);
         }
 
         eat("END");
@@ -148,7 +151,7 @@ private:
 
     Node parseReadStmt() {
         eat("READ");
-        Node read("read", currentToken().value, currentIndex, true);
+        Node read("read", currentToken().value, currentIndex - 1, true);
         eat("IDENTIFIER");
         if (currentToken().type == "SEMICOLON") eat("SEMICOLON");
         return read;
@@ -157,8 +160,21 @@ private:
     Node parseWriteStmt() {
         Node write("write", "", currentIndex, true);
         eat("WRITE");
-        Node child("id", currentToken().value, currentIndex, false);
-        eat("IDENTIFIER");
+        Node child("", "", -1, 0);
+        if (currentToken().type == "IDENTIFIER") {
+            child.name = "id";
+            child.value = currentToken().value;
+            child.id = currentIndex;
+            child.type = false;
+            eat("IDENTIFIER");
+        }
+        else if (currentToken().type == "NUMBER") {
+            child.name = "const";
+            child.value = currentToken().value;
+            child.id = currentIndex;
+            child.type = false;
+            eat("NUMBER");
+        }
         graph[write].emplace_back(child, 1);
         return write;
     }
@@ -193,7 +209,7 @@ private:
 
     Node parseTerm() {
         Node left_node = parseFactor();
-        if (currentToken().type == "MUL" || currentToken().type == "DIV") {
+        if (currentToken().type == "MULT" || currentToken().type == "DIV") {
             Node parent_node("op", currentToken().value, currentIndex, false);
             eat(currentToken().type);
             Node right_node = parseExp();
@@ -218,9 +234,9 @@ private:
         }
         else if (currentToken().type == "OPENBRACKET") {
             eat("OPENBRACKET");
-            parseExp();
+            Node expr_node = parseExp();
             eat("CLOSEDBRACKET");
-            return Node("", "", currentIndex, false);
+            return expr_node;
         }
         else{
             throw runtime_error("Syntax Error: Unexpected token " + currentToken().type);
@@ -236,6 +252,21 @@ public:
     }
 
     void parse() {
+        if (currentToken().type == "READ") {
+            root = Node("read", tokens[currentIndex + 1].value, currentIndex, 1);
+        }
+        else if (currentToken().type == "WRITE") {
+            root = Node("write", "", currentIndex, 1);
+        }
+        else if (currentToken().type == "IDENTIFIER") {
+            root = Node("assign", currentToken().value, currentIndex, 1);
+        }
+        else if (currentToken().type == "REPEAT") {
+            root = Node("repeat", "", currentIndex, 1);
+        }
+        else {
+            root = Node("if", "", currentIndex, 1);
+        }
         parseStmtSeq();
         if (currentIndex < tokens.size()) {
             cout << currentIndex << endl;
@@ -257,6 +288,16 @@ void TT() {
 
     Parser parser(tokens);
     parser.parse();
+
+    Node st = parser.getRoot();
+    function<void(Node,Node)> dfs = [&](Node currentNode,Node prev) {
+        cout << currentNode.name << ' ' << currentNode.value << ' ' << currentNode.id << endl;
+        for (auto &x : graph[currentNode]) {
+            if (x.first.id == prev.id) continue;
+            dfs(x.first, currentNode);
+        }
+    };
+    dfs(st, Node("", "", -1, 0));
 }
 
 signed main() {
