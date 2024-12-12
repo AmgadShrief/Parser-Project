@@ -20,9 +20,10 @@ struct Token {
 
 struct Node {
     string name;
+    string value;
     int id;
     bool isSquare;
-    Node(const string& v, const int& t, const bool& b) : name(v), id(t), isSquare(b) {}
+    Node(const string& v, const string &m, const int& t, const bool& b) : name(v), value(m), id(t), isSquare(b) {}
 
     // Define a less-than operator for Node
     bool operator<(const Node& other) const {
@@ -81,7 +82,7 @@ private:
     }
 
     Node parseIfStmt() {
-        Node if_node("if", currentIndex, true);
+        Node if_node("if", "", currentIndex, true);
         eat("IF");
         Node left_child = parseExp();
         eat("THEN");
@@ -97,7 +98,7 @@ private:
 
         // Check for optional "ELSE" block
         if (currentToken().type == "ELSE") {
-            Node else_node("else", currentIndex, true);
+            Node else_node("else", "", currentIndex, true);
             eat("ELSE");
             Node left_else_node = parseStmt();
             graph[else_node].emplace_back(left_else_node, 1);
@@ -114,7 +115,7 @@ private:
     }
 
     Node parseRepeatStmt() {
-        Node repeat("Repeat", currentIndex, true);
+        Node repeat("Repeat", "", currentIndex, true);
         eat("REPEAT");
         Node left_child = parseStmt();
         graph[repeat].emplace_back(left_child, 1);
@@ -139,16 +140,16 @@ private:
 
     Node parseReadStmt() {
         eat("READ");
-        Node read("read" + '\n' + '(' + currentToken().value + ')', currentIndex, true);
+        Node read("read", currentToken().value, currentIndex, true);
         eat("IDENTIFIER");
         if (currentToken().type == "SEMICOLON") eat("SEMICOLON");
         return read;
     }
 
     Node parseWriteStmt() {
-        Node write("write", currentIndex, true);
+        Node write("write", "", currentIndex, true);
         eat("WRITE");
-        Node child("id" + '\n' + '(' + currentToken().value + ')', currentIndex, false);
+        Node child("id", currentToken().value, currentIndex, false);
         eat("IDENTIFIER");
         graph[write].emplace_back(child, 1);
         return write;
@@ -157,7 +158,7 @@ private:
     Node parseExp() {
         Node left_node = parseSimpleExp();
         if (currentToken().type == "LESSTHAN" || currentToken().type == "EQUAL") {
-            Node parent_node("op" + '\n' + '(' + currentToken().value + ')', currentIndex, false);
+            Node parent_node("op", currentToken().value, currentIndex, false);
             eat(currentToken().type);
             Node right_node = parseExp();
             graph[parent_node].emplace_back(left_node, 1);
@@ -171,7 +172,7 @@ private:
     Node parseSimpleExp() {
         Node left_node = parseTerm();
         if (currentToken().type == "PLUS" || currentToken().type == "MINUS") {
-            Node parent_node("op" + '\n' + '(' + currentToken().value + ')', currentIndex, false);
+            Node parent_node("op", currentToken().value, currentIndex, false);
             eat(currentToken().type);
             Node right_node = parseExp();
             graph[parent_node].emplace_back(left_node, 1);
@@ -185,7 +186,7 @@ private:
     Node parseTerm() {
         Node left_node = parseFactor();
         if (currentToken().type == "MUL" || currentToken().type == "DIV") {
-            Node parent_node("op" + '\n' + '(' + currentToken().value + ')', currentIndex, false);
+            Node parent_node("op", currentToken().value, currentIndex, false);
             eat(currentToken().type);
             Node right_node = parseExp();
             graph[parent_node].emplace_back(left_node, 1);
@@ -198,12 +199,12 @@ private:
 
     Node parseFactor() {
         if (currentToken().type == "NUMBER") {
-            Node number_node("const" + '\n' + '(' + currentToken().value + ')', currentIndex, false);
+            Node number_node("const", currentToken().value, currentIndex, false);
             eat("NUMBER");
             return number_node;
         }
         else if (currentToken().type == "IDENTIFIER") {
-            Node id_node("id" + '\n' + '(' + currentToken().value + ')', currentIndex, false);
+            Node id_node("id", currentToken().value, currentIndex, false);
             eat("IDENTIFIER");
             return id_node;
         }
@@ -211,7 +212,7 @@ private:
             eat("OPENBRACKET");
             parseExp();
             eat("CLOSEDBRACKET");
-            return Node("", currentIndex, false);
+            return Node("", "", currentIndex, false);
         }
         else{
             throw runtime_error("Syntax Error: Unexpected token " + currentToken().type);
