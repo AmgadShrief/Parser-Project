@@ -132,10 +132,13 @@ private:
     }
 
     Node parseAssignStmt() {
+        Node parent("Assign", currentToken().value, currentIndex, true);
         eat("IDENTIFIER");
         eat("ASSIGN");
-        parseExp();
+        Node child = parseExp();
+        graph[parent].emplace_back(child, 1);
         if (currentToken().type == "SEMICOLON") eat("SEMICOLON");
+        return parent;
     }
 
     Node parseReadStmt() {
